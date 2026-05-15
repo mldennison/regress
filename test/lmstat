@@ -1,0 +1,62 @@
+lmstat - Copyright (c) 1989-2018 Flexera. All Rights Reserved.
+Flexible License Manager status on Fri 5/1/2026 12:33
+
+License server status: 5280@sc24ut01
+    License file(s) on sc24ut01: /home/cm_admin/licenses/lic.cadence:
+
+  sc24ut01: license server UP (MASTER) v11.16.4
+
+Vendor daemon status (on sc24ut01):
+
+    cdslmd: UP v11.16.4
+Feature usage info:
+
+Users of ACCEL_MEM_PLUS:  (Total of 4160 licenses issued;  Total of 0 licenses in use)
+
+Users of ACCEL_MEM_VIP:  (Total of 4160 licenses issued;  Total of 0 licenses in use)
+
+Users of AVIP_PCIE_5:  (Total of 2 licenses issued;  Total of 0 licenses in use)
+
+Users of AVIP_UART:  (Total of 7 licenses issued;  Total of 1 license in use)
+
+  "AVIP_UART" v25.0, vendor: cdslmd, expiry: 20-may-2026
+  vendor_string: J:PERM
+  floating license
+
+    dennison sc24pd01 10.111.11.213:12.0 (v25.000) (sc24ut01/5280 970), start Thu 4/30 12:54
+
+Users of Affirma_sim_analysis_env:  (Total of 21 licenses issued;  Total of 3 licenses in use)
+
+  "Affirma_sim_analysis_env" v26.0, vendor: cdslmd, expiry: 20-may-2026
+  vendor_string: UHD:PERM
+  floating license
+
+    gbk6856 sc24ut01 sc24ut01:35 (v16.000) (sc24ut01/5280 1305), start Wed 4/22 8:27
+    mahmad sc24pd03 10.111.11.200:56.0 (v16.000) (sc24ut01/5280 844), start Wed 4/29 23:46
+    dennison sc24pd01 10.111.11.213:12.0 (v25.000) (sc24ut01/5280 1419), start Thu 4/30 13:12
+
+Users of COSLITE_ACCESS:  (Total of 1 license issued;  Total of 0 licenses in use)
+
+Users of Integrated_Metrics_Center:  (Total of 21 licenses issued;  Total of 0 licenses in use)
+
+Users of Palladium_Z1_Compile:  (Total of 1 license issued;  Total of 0 licenses in use)
+
+Users of Palladium_Z1_Domain:  (Total of 96 licenses issued;  Total of 0 licenses in use)
+
+Users of Palladium_Z2_Compiler:  (Total of 2 licenses issued;  Total of 0 licenses in use)
+
+Users of Palladium_Z2_Domain:  (Total of 112 licenses issued;  Total of 8 licenses in use)
+
+  "Palladium_Z2_Domain" v25.0, vendor: cdslmd, expiry: 20-may-2026
+  vendor_string: J:PERM
+  floating license
+
+    dennison sc24pd01 10.111.11.213:12.0 (v25.000) (sc24ut01/5280 1117), start Thu 4/30 12:53, 8 licenses
+
+Users of Xcelium_Single_Core:  (Total of 21 licenses issued;  Total of 1 license in use)
+
+  "Xcelium_Single_Core" v26.0, vendor: cdslmd, expiry: 20-may-2026
+  vendor_string: J:PERM
+  floating license
+
+    dennison sc24pd01 10.111.11.213:12.0 Xcelium Single Core Engine (v25.000) (sc24ut01/5280 691), start Thu 4/30 12:53

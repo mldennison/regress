@@ -1,0 +1,78 @@
+Emulator: scemvsmd24-01     Hardware: Palladium Z2        Configmgr: V24.05.338.s005System Status: ONLINE
+Rack 0 has 1 clusters
+Cluster 2 has 6 boards           CCD: ONLINE
+Board 12 has  8 domains              Board: ONLINE
+Domain   Owner        PID             T-Pod    Design          ElapTime     ReservedKey
+12.0     NONE         0               --  --   NONE            --           --        
+12.1     NONE         0               --  --   NONE            --           --        
+12.2     NONE         0               --  --   NONE            --           --        
+12.3     NONE         0               --  --   NONE            --           --        
+12.4     NONE         0               --  --   NONE            --           --        
+12.5     NONE         0               --  --   NONE            --           --        
+12.6     NONE         0               --  --   NONE            --           --        
+12.7     NONE         0               --  --   NONE            --           --        
+Board 13 has  8 domains              Board: ONLINE
+Domain   Owner        PID             T-Pod    Design          ElapTime     ReservedKey
+13.0     NONE         0               --  --   NONE            --           --        
+13.1     NONE         0               --  --   NONE            --           --        
+13.2     NONE         0               --  --   NONE            --           --        
+13.3     NONE         0               --  --   NONE            --           --        
+13.4     NONE         0               --  --   NONE            --           --        
+13.5     NONE         0               --  --   NONE            --           --        
+13.6     NONE         0               --  --   NONE            --           --        
+13.7     NONE         0               --  --   NONE            --           --        
+Board 14 has  8 domains              Board: ONLINE
+Domain   Owner        PID             T-Pod    Design          ElapTime     ReservedKey
+14.0     dennison     sc24pd01:3882006 --  --   SA:tb_top       23:38:19     --        
+14.1     dennison     sc24pd01:3882006 --  --   SA:tb_top       23:38:19     --        
+14.2     dennison     sc24pd01:3882006 --  --   SA:tb_top       23:38:19     --        
+14.3     dennison     sc24pd01:3882006 --  --   SA:tb_top       23:38:19     --        
+14.4     dennison     sc24pd01:3882006 --  --   SA:tb_top       23:38:19     --        
+14.5     dennison     sc24pd01:3882006 --  --   SA:tb_top       23:38:19     --        
+14.6     dennison     sc24pd01:3882006 --  --   SA:tb_top       23:38:19     --        
+14.7     dennison     sc24pd01:3882006 --  --   SA:tb_top       23:38:19     --        
+Board 15 has  8 domains              Board: ONLINE
+Domain   Owner        PID             T-Pod    Design          ElapTime     ReservedKey
+15.0     NONE         0               --  --   NONE            --           --        
+15.1     NONE         0               --  --   NONE            --           --        
+15.2     NONE         0               --  --   NONE            --           --        
+15.3     NONE         0               --  --   NONE            --           --        
+15.4     NONE         0               --  --   NONE            --           --        
+15.5     NONE         0               --  --   NONE            --           --        
+15.6     NONE         0               --  --   NONE            --           --        
+15.7     NONE         0               --  --   NONE            --           --        
+Board 16 has  8 domains              Board: ONLINE
+Domain   Owner        PID             T-Pod    Design          ElapTime     ReservedKey
+16.0     NONE         0               --  --   NONE            --           --        
+16.1     NONE         0               --  --   NONE            --           --        
+16.2     NONE         0               --  --   NONE            --           --        
+16.3     NONE         0               --  --   NONE            --           --        
+16.4     NONE         0               --  --   NONE            --           --        
+16.5     NONE         0               --  --   NONE            --           --        
+16.6     NONE         0               --  --   NONE            --           --        
+16.7     NONE         0               --  --   NONE            --           --        
+Board 17 has  8 domains              Board: ONLINE
+Domain   Owner        PID             T-Pod    Design          ElapTime     ReservedKey
+17.0     NONE         0               --  --   NONE            --           --        
+17.1     NONE         0               --  --   NONE            --           --        
+17.2     NONE         0               --  --   NONE            --           --        
+17.3     NONE         0               --  --   NONE            --           --        
+17.4     NONE         0               --  --   NONE            --           --        
+17.5     NONE         0               --  --   NONE            --           --        
+17.6     NONE         0               --  --   NONE            --           --        
+17.7     NONE         0               --  --   NONE            --           --        
+
+Target Pod Information:
+Rack 0:
+All length 5 HDSB: T56
+All length 5 T-Pods: T48, T49, T50, T51, T52, T53, T54, T55, T57, T58, T59, T60, T61, T62, T63, T64, T65, T66, T67, T68, T69, T70, T71
+Available HDSB: T56
+Available T-Pods: T51, T52, T54, T55, T57, T58, T59
+Locked HDSB: NONE
+Locked T-Pods: NONE
+Reserved HDSB: NONE
+Reserved T-Pods: NONE
+Unavailable HDSB: NONE
+Unavailable T-Pods: T48, T49, T50, T53, T60, T61, T62, T63, T64, T65, T66, T67, T68, T69, T70, T71
+
+Exit code: 0
