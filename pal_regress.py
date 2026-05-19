@@ -8,17 +8,71 @@ import random
 #######################################################
 
 class domainResource(resource):
+    domains_per_board = 8
+
+    def biggest_run(self, _free:list) -> list:
+        # find the longest run of free domains
+        longest_run = 0
+        longest_run_list = []
+        current_run = 0
+        current_run_list = []
+        for i in reversed(range(self.domains_per_board)):
+            if i in _free:
+                current_run += 1
+                current_run_list.insert(0, i)
+            else:
+                if current_run >= longest_run:
+                    longest_run = current_run
+                    longest_run_list = current_run_list
+                current_run = 0
+                current_run_list = []
+        if current_run >= longest_run:
+            longest_run = current_run
+            longest_run_list = current_run_list
+
+        return longest_run_list
+
+    def full_board(self, _free:list) -> bool:
+        return len(_free) >= self.domains_per_board 
+
     def allocate(self, _resource) -> resource:
         # allocate from the top if possible
-        domains_per_board = 8
         requested = _resource.values[0]
-        free_domains = []
-        # find list of free domains
+        free_domains = {}
+        bsplit = re.compile(r'(\d+).(\d+)')
+        # find list of free domains, arranged by board
         for (idx, domain) in enumerate(self.values):
             if self.status[idx] == "FREE":
-                free_domains.append(domain)
-                if len(free_domains) >= requested:
-                    return resource("domains", free_domains, ["USED"], True)
+                match = bsplit.match(self.values[idx])
+                if match:
+                    board = int(match.group(1))
+                    domain = int(match.group(2))
+                    if board not in free_domains:
+                        free_domains[board] = []
+                    free_domains[board].append(domain)
+                else:
+                    logging.error(f"Invalid domain name: {self.values[idx]}")
+                    return None
+
+        # if more than one boards, move back from end of list
+        if requested > self.domains_per_board:
+            # see if we have a full board of domains
+            pass # FIXME
+            # then see if the partial domains are enough
+        else:
+            # less than a full board, start from the end and allocate
+            for board in reversed(free_domains):
+                run = self.biggest_run(free_domains[board])
+                # make sure we are on an even boundary for the number requested
+                if len(run) >= requested:
+                    # add the board back in
+                    ll = run[-requested:]
+                    for (idx, domain) in enumerate(ll):
+                        ll[idx] = f"{board}.{domain}"
+                    return resource("domains", ll, ["USED"], True)
+            return None
+
+        # could not find any domains, return None
         return None
     
 #######################################################

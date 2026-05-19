@@ -17,3 +17,13 @@ voxel_release_sim00_regbuild:
     run_args:
         - "-p VOXEL/sowph1A_rel3 -c cmd_files/voxel_sowph --extdata VOXEL/sowph1A_rel3/extdata.128b.hex --sram VOXEL/sowph1A_rel3/sram_bXX.hex"
         - "-p VOXEL/sowph1B_rel1 -c cmd_files/voxel_sowph --extdata VOXEL/sowph1A_rel3/extdata.128b.hex --sram VOXEL/sowph1B_rel1/sram_bXX.hex"
+
+rv64_ql_small_regbuild:
+    domains: 1
+    run_args: -p rv64_ql_regbuild -c cmd_files/bbl
+
+
+rv64_ql_regbuild:
+    domains: 2
+    run_args: -p rv64_ql_regbuild -c cmd_files/bbl
+
