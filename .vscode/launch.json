@@ -9,7 +9,7 @@
             "name": "Python Debugger: Current File with Arguments",
             "type": "debugpy",
             "request": "launch",
-            "program": "pal_regress.py",
+            "program": "ak_regress.py",
             "console": "integratedTerminal",
             //"preLaunchTask": "Delete Log File" , // Matches label in tasks.json
             "args": ""

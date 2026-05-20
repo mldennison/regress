@@ -8,6 +8,10 @@ global:
     run_program: runEmu.py
     run_dir: "."
 
+alpine_regbuild:
+    domains: 32
+    run_args: -p rv64_qh_regbuild -c cmd_files/bbl
+
 rv64_qh_regbuild:
     domains: 4
     run_args: -p rv64_qh_regbuild -c cmd_files/bbl

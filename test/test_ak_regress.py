@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from pal_regress import akRegress
+from ak_regress import akRegress
 from regress import job_status, scheduler
 
 
@@ -27,10 +27,21 @@ def make_test_job(name: str, domains: int):
 
 def make_test_server_provider(domain_count: int):
     def provider(factory, _test_mode, _test_server_file):
-        domain_ids = [f"0.{idx}" for idx in range(domain_count)]
+        domain_ids = []
+        for idx in range(domain_count):
+            board = idx // 8
+            domain = idx % 8
+            domain_ids.append(f"{board}.{domain}")
         return [factory.create_resource("domains", domain_ids, ["FREE"] * domain_count)]
 
     return provider
+
+
+def run_scheduling_iterations(regress_runner, iterations: int = 5) -> None:
+    regress_runner.jobs = regress_runner.filter_test_list(regress_runner.load_test_list())
+    for _ in range(iterations):
+        regress_runner.stat.update()
+        regress_runner.sch.schedule_jobs(regress_runner.jobs, regress_runner.stat)
 
 
 def make_lmstat_provider(available_domains: int):
@@ -110,3 +121,24 @@ def test_main_behavior_changes_with_different_injected_test_lists():
 
     assert small_run_count == 1
     assert large_run_count == 4
+
+
+def test_main_mixed_domain_requests_above_and_below_board_size():
+    jobs = [
+        make_test_job("job_large", domains=12),
+        make_test_job("job_small", domains=4),
+    ]
+    rec_scheduler = RecordingScheduler()
+
+    regress_runner = akRegress(
+        _sch=rec_scheduler,
+        _load_jobs_fn=lambda _path: jobs,
+        _test_server_provider=make_test_server_provider(domain_count=16),
+        _lmstat_provider=make_lmstat_provider(available_domains=16),
+    )
+    run_scheduling_iterations(regress_runner, iterations=5)
+
+    job_by_name = {job.name: job for job in regress_runner.jobs}
+    assert job_by_name["job_small"].status == job_status.COMPLETED
+    assert job_by_name["job_large"].status == job_status.SETUP
+    assert any(count > 0 for count in rec_scheduler.skipped_counts)
