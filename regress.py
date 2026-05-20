@@ -228,6 +228,8 @@ class available_resources:
                 if jresource.name == ourresource.name:
                     matched = True
                     resource = ourresource.allocate(jresource)
+                    if resource is None:
+                        return None
                     retval.append(resource)
                     break
             if not matched:
@@ -334,6 +336,7 @@ class regress:
 
         # schedule jobs until all scheduled
         remaining = self.jobs
+        scheduled = []
         while (len(remaining) > 0) or (len(scheduled) > 0):
             
             # get updated status 

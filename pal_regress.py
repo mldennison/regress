@@ -4,8 +4,36 @@ from regress import *
 import subprocess
 import time
 import random
+from typing import Callable
 
 #######################################################
+
+def _regress_test_mode() -> bool:
+    import regress as regress_module
+    return bool(regress_module.test_mode)
+
+
+def _default_load_jobs(testlist_path: str):
+    from testlist_parser import load_jobs
+    return load_jobs(testlist_path)
+
+
+def _default_test_server_provider(factory: resourceFactory, _test_mode: bool, test_server_file: str) -> list[resource]:
+    if _test_mode:
+        from test_server import parse_emulator_status
+        with open(test_server_file, "r") as f:
+            return parse_emulator_status(factory, f.read())
+    from test_server import run_test_server
+    return run_test_server(factory)
+
+
+def _default_lmstat_provider(factory: resourceFactory, _test_mode: bool, license_file: str) -> list[resource]:
+    if _test_mode:
+        from lmstat import parse_lmstat
+        with open(license_file, "r") as f:
+            return parse_lmstat(factory, f.read())
+    from lmstat import run_lmstat
+    return run_lmstat(factory)
 
 class domainResource(resource):
     domains_per_board = 8
@@ -145,6 +173,15 @@ class palResourceFactory(resourceFactory):
 class palAvailableResources(available_resources):
     test_server_file = "test/test_server"
     license_file = "test/lmstat"
+
+    def __init__(
+        self,
+        _test_server_provider: Callable[[resourceFactory, bool, str], list[resource]] = None,
+        _lmstat_provider: Callable[[resourceFactory, bool, str], list[resource]] = None,
+    ) -> None:
+        super().__init__()
+        self.test_server_provider = _test_server_provider or _default_test_server_provider
+        self.lmstat_provider = _lmstat_provider or _default_lmstat_provider
     
     def __repr__(self) -> str:
         parts = []
@@ -161,18 +198,9 @@ class palAvailableResources(available_resources):
         # do not refresh if under interval
         if not self.needs_update(): return
 
-        if test_mode:
-            from test_server import parse_emulator_status
-            from lmstat import parse_lmstat
-            with open(self.test_server_file, "r") as f:
-                self.resources = parse_emulator_status(factory, f.read())
-            with open(self.license_file, "r") as f:
-                licenses = parse_lmstat(factory, f.read())
-        else:
-            from test_server import run_test_server
-            from lmstat import run_lmstat
-            self.resources = run_test_server(factory)
-            licenses = run_lmstat(factory)
+        test_mode_value = _regress_test_mode()
+        self.resources = self.test_server_provider(factory, test_mode_value, self.test_server_file)
+        licenses = self.lmstat_provider(factory, test_mode_value, self.license_file)
         self.resources.extend(licenses)
         logging.info(f"Updated resources:\n {self.__repr__()}")
     
@@ -207,7 +235,7 @@ class akJob(job):
     def run(self, _resources:list):
         # call runEmu
         logging.info(f"Running job: {self.run_program} {self.run_args} from dir {self.run_dir}")
-        if test_mode:
+        if _regress_test_mode():
             time.sleep(2)
             self.status = job_status.COMPLETED
             self.result = random.choice([job_result.SUCCESS, job_result.FAILED])
@@ -222,17 +250,29 @@ class akJob(job):
 #######################################################
 
 class akRegress(regress):
-    def __init__(self) -> None:
-        super().__init__()
-        self.stat = palAvailableResources()
+    def __init__(
+        self,
+        _sch: scheduler = None,
+        _stat: available_resources = None,
+        _load_jobs_fn: Callable[[str], list] = None,
+        _test_server_provider: Callable[[resourceFactory, bool, str], list[resource]] = None,
+        _lmstat_provider: Callable[[resourceFactory, bool, str], list[resource]] = None,
+    ) -> None:
+        injected_stat = _stat
+        if injected_stat is None:
+            injected_stat = palAvailableResources(
+                _test_server_provider=_test_server_provider,
+                _lmstat_provider=_lmstat_provider,
+            )
+        super().__init__(_sch=_sch, _stat=injected_stat)
+        self.load_jobs_fn = _load_jobs_fn or _default_load_jobs
 
     testlist = "test/regress.yaml"
     
     def load_test_list(self) -> list:
         '''  Implement to parse test list and return a list of jobs '''
-        from testlist_parser import load_jobs
         jobs = []
-        tjobs = load_jobs(self.testlist)
+        tjobs = self.load_jobs_fn(self.testlist)
         for tjob in tjobs:
             job = akJob.create_from_testlistjob(tjob)
             jobs.append(job)

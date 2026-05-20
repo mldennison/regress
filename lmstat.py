@@ -64,7 +64,7 @@ def run_lmstat(factory: resourceFactory, command: str = "lmstat -a") -> list[res
             f"Command '{command}' failed with exit code {result.returncode}.\n"
             f"stderr: {result.stderr}"
         )
-    return parse_lmstat(result.stdout)
+    return parse_lmstat(factory, result.stdout)
 
 
 # ------------------------------------------------------------------ #
