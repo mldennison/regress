@@ -54,9 +54,15 @@ class domainResource(resource):
 
         return longest_run_list
 
-    def full_board(self, _free:list) -> bool:
+    def free_board(self, _free:list) -> bool:
         ''' is the board full? '''
         return len(_free) >= self.domains_per_board 
+
+    def leftover_free(self, _free:list, _leftover_domains:int) -> bool:
+        ''' leftover domains have to be at the start, make sure the first N domains are free '''
+        for i in (range(self.domains_per_board)):
+            if i not in _free: return False
+        return True
 
     def allocate(self, _resource) -> resource:
         ''' allocate resources accordint to rules:
@@ -82,8 +88,37 @@ class domainResource(resource):
         # if more than one boards, move back from end of list
         if requested > self.domains_per_board:
             # see if we have a full board of domains
-            pass # FIXME
-            # then see if the partial domains are enough
+            boards = int(requested / self.domains_per_board)
+            leftover_domains = requested % self.domains_per_board
+            # first look for full boards in a row
+            leftover_board = None
+            full_board = None
+            boards_found = 0
+            for board in reversed(free_domains):
+                leftover_this_board = self.leftover_free(free_domains[board], leftover_domains)
+                if (leftover_domains == 0 or leftover_board is not None) and boards_found < boards:
+                    # we had enough leftover domains check if previous is a free board
+                    if self.free_board(free_domains[board]):
+                        boards_found += 1
+                        if full_board is None: full_board = board
+                    else:
+                        # need to start over
+                        leftover_board = None
+                        full_board = None
+                        boards_found = 0
+                        continue
+                if (leftover_domains > 0 and leftover_board is None) and leftover_this_board is True:
+                    leftover_board = board
+                if boards_found == boards:
+                    # we found everything, create the string
+                    domains = []
+                    for j in range(leftover_domains):
+                        domains.append(f"{leftover_board}.{j}")
+                    for i in range(boards):
+                        for j in range(self.domains_per_board):
+                            domains.append(f"{full_board-i}.{j}")
+                    return resource("domains", domains, ["USED"], True)
+            return None
         else:
             # less than a full board, start from the end and allocate
             for board in reversed(free_domains):
@@ -127,9 +162,8 @@ class licenseResource(resource):
         # check that we have enough
         self.find_indicies()
         requested = _resource.values[0]
-        for license in self.values:
-            if license >= requested:
-                return resource("Palladium_Z2_Domain", [requested], ["USED"], True)
+        if self.values[self.availidx] >= requested:
+            return resource("Palladium_Z2_Domain", [requested], ["USED"], True)
         return None
 
     def consume(self, _values:list) -> bool:
