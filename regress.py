@@ -10,6 +10,8 @@ import logging
 from datetime import datetime
 import time
 
+from regress_utils import split_to_list
+
 test_mode = True
 
 class job_status:
@@ -295,11 +297,9 @@ class regress:
     #-------------------------------------------------------
     def argument_parse(self) -> None:
         parser = argparse.ArgumentParser(prog='regress',
-                                         description='Regre')
-        # FIXME
-        #parser.add_argument("-n", "--norun", action='store_true', help='For debug, skip running commands and just print')
-        #parser.add_argument("-m", "--models", help='List of models to run, these should all be in the RUNS/regress area')
-        #parser.add_argument("-s", "--scripts_dir", default="/proj/akeanaz1/SCRIPTS", help='Change the scripts dir away from SCRIPTS')
+                                         description='Regression test scheduler')
+        parser.add_argument("-r", "--root_dir", help='Root directory for regress')
+        parser.add_argument("-n", "--norun", action='store_true', help='For debug, skip running commands and just print')
        
         # let extended class add arguments
         self.extended_args_parse(parser)
@@ -310,6 +310,13 @@ class regress:
         ''' Implement to add new arguments '''
         pass
 
+    #-------------------------------------------------------
+    def setup(self) -> None:
+        ''' Called after argument parsing, parse args and setup regression '''
+        self.root_dir = self.args.root_dir
+        self.norun = self.args.norun
+
+    #-------------------------------------------------------
     def report_status(self) -> None:
         for job in self.jobs:
             print(job)
@@ -326,6 +333,8 @@ class regress:
         logging.info(f"------------------------------------------------------\n")
 
         logging.info(f"Regress::main started")
+        self.argument_parse()
+        self.setup()
 
         # load test list of all possible jobs
         self.jobs = self.load_test_list()

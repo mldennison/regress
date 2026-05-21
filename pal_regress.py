@@ -150,6 +150,14 @@ class tpodResource(resource):
 class licenseResource(resource):
     availidx = None
     usedidx = None
+    max_pct = 100
+
+    def set_max_pct(self, _max_pct:int) -> None:
+        ''' sets the max percentage of licenses we can use '''
+        if _max_pct < 0 or _max_pct > 100:
+            logging.error(f"Invalid max percentage: {_max_pct}")
+            return
+        self.max_pct = _max_pct
 
     def find_indicies(self) -> None:
         if self.availidx is None:
@@ -162,23 +170,24 @@ class licenseResource(resource):
         # check that we have enough
         self.find_indicies()
         requested = _resource.values[0]
-        if self.values[self.availidx] >= requested:
+        available_licenses = int(self.values[self.availidx] * self.max_pct / 100)
+        if requested > available_licenses:
+            logging.info(f"Requested {requested} licenses, but only {available_licenses} available")
+            return None
+        else:
             return resource("Palladium_Z2_Domain", [requested], ["USED"], True)
-        return None
 
     def consume(self, _values:list) -> bool:
         requested = _values[0]    
-        #self.find_indicies()
         if self.values[self.availidx] >= requested:
             self.values[self.availidx] -= requested
             self.values[self.usedidx] += requested
             return True
         else:
-            logging.error(f"Requested {requested} licenses, but only {self.values[self.availidx]} available")
+            logging.error(f"Requested {requested} licenses, but only {self.values[self.availidx]} available, this should have been caught by allocate()")
             return False
 
     def free(self, _values:list) -> bool:
-        #self.find_indicies()
         requested = _values[0]
         self.values[self.availidx] += requested
         self.values[self.usedidx] -= requested

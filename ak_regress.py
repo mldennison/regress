@@ -8,20 +8,16 @@ import time
 from typing import Callable
 
 from regress import *
-from pal_regress import (
-    _regress_test_mode,
-    domainResource,
-    licenseResource,
-    palAvailableResources,
-)
-
+from pal_regress import _regress_test_mode
+from pal_regress import domainResource
+from pal_regress import licenseResource
+from pal_regress import palAvailableResources
 
 #######################################################
 
 def _default_load_jobs(testlist_path: str):
     from testlist_parser import load_jobs
     return load_jobs(testlist_path)
-
 
 #######################################################
 
@@ -31,6 +27,8 @@ class akJob(job):
 
     @classmethod
     def create_from_testlistjob(cls, _testJob):
+        ''' create a job from a testlist job, this allows the yaml parser to generate job classes and 
+            we can use this to upconvert to akjobs and add in specifics '''
         nph = cls()
 
         for field in _testJob.__dict__:
@@ -84,8 +82,41 @@ class akRegress(regress):
             )
         super().__init__(_sch=_sch, _stat=injected_stat)
         self.load_jobs_fn = _load_jobs_fn or _default_load_jobs
+ 
+    #-------------------------------------------------------
+    def setup(self) -> None:
+        ''' Called after argument parsing, parse args and setup regression '''
 
-    testlist = "test/regress.yaml"
+        if self.args.root_dir is not None: self.root_dir = self.args.root_dir
+        else:                              self.root_dir = "/proj/akeanaz1"
+        if self.args.usage is not None: licenseResource.max_pct = self.args.usage
+        else:                           licenseResource.max_pct = 50
+        if not _regress_test_mode():
+            self.home = "/home/" + os.environ.get('USER')
+            self.user_dir =  self.root_dir + "/USERS/"  + os.environ.get('USER')
+            self.programs = self.root_dir + "/PROGRAMS/"
+            self.run_dir =  self.user_dir + "/RUNS/regress"
+            self.model_dir = self.root_dir + "/MODELS/regress"
+            self.script_dir = self.root_dir + "/SCRIPTS"
+        else:
+            self.home = "."
+            self.user_dir =  "."
+            self.programs = "."
+            self.run_dir =  "."
+            self.model_dir = "."
+            self.script_dir = "."
+            # make the interval very short for testing
+            self.interval = 1
+
+        if self.args.test_list is not None: self.testlist = self.args.test_list
+        else:                              self.testlist = "test/regress.yaml"
+
+    #-------------------------------------------------------
+    def extended_args_parse(self, parser:argparse.ArgumentParser) -> None:
+        ''' Implement to add new arguments '''
+        parser.add_argument("-u", "--usage", default=100, type=int, help='List of models to run, these should all be in the RUNS/regress area')
+        parser.add_argument("-m", "--models", help='List of models to run, these should all be in the RUNS/regress area')
+        parser.add_argument("-t", "--test_list", help='Point to a different test list')
 
     def load_test_list(self) -> list:
         '''  Implement to parse test list and return a list of jobs '''

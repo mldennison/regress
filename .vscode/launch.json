@@ -12,7 +12,7 @@
             "program": "ak_regress.py",
             "console": "integratedTerminal",
             //"preLaunchTask": "Delete Log File" , // Matches label in tasks.json
-            "args": ""
+            "args": "-r . -u 100"
         }
     ]
 }
