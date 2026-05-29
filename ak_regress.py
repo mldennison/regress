@@ -47,6 +47,20 @@ class akJob(job):
 
         return nph
 
+    def setup(self, _resources:list):
+        ''' setup the job '''
+        logging.info(f"Setting up job: {self.setup_program} {self.setup_args} with resources: {_resources}")
+        if _regress_test_mode():
+            time.sleep(2)
+            self.status = job_status.COMPLETED
+            self.result = job_result.SUCCESS
+            logging.info(f"{self.name} setup completed with result: {self.result}")
+        else:
+            result = subprocess.run([self.setup_program] + self.setup_args, cwd=self.setup_dir, capture_output=True, text=True)
+            self.status = job_status.COMPLETED
+            self.result = job_result(result.returncode)
+            logging.info(f"{self.name} setup completed with result: {self.result}")
+
     def run(self, _resources:list):
         # call runEmu
         logging.info(f"Running job: {self.run_program} {self.run_args} from dir {self.run_dir}")
@@ -56,7 +70,6 @@ class akJob(job):
             self.result = random.choice([job_result.SUCCESS, job_result.FAILED])
             logging.info(f"{self.name} completed with result: {self.result}")
         else:
-            logging.info(f"Running job: {self.run_program} {self.run_args} from dir {self.run_dir}")
             result = subprocess.run([self.run_program] + self.run_args, cwd=self.run_dir, capture_output=True, text=True)
             self.status = job_status.COMPLETED
             self.result = job_result(result.returncode)
@@ -109,7 +122,7 @@ class akRegress(regress):
             self.interval = 1
 
         if self.args.test_list is not None: self.testlist = self.args.test_list
-        else:                              self.testlist = "test/regress.yaml"
+        else:                               self.testlist = "test/regress.yaml"
 
     #-------------------------------------------------------
     def extended_args_parse(self, parser:argparse.ArgumentParser) -> None:
@@ -131,6 +144,15 @@ class akRegress(regress):
 
     def filter_test_list(self, test_list:list) -> list:
         ''' Implement to filter test list to only include jobs that can be run now '''
+        if _regress_test_mode():
+            # run everything in the test list
+            return test_list
+        else:
+            # find builds that are are available to run right now
+            for job in test_list:
+                if job.status == job_status.NOT_STARTED:
+                    jobs.append(job)
+            return jobs
         return test_list
 
 
