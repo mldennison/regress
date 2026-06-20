@@ -7,6 +7,10 @@
 global:
     run_program: runEmu.py
     run_dir: "."
+    run_args: AUTO -r
+    setup_program: runEmu.py
+    setup_dir: "."
+    setup_args: EXTRACT -r
 
 alpine_regbuild:
     domains: 32
@@ -25,7 +29,6 @@ voxel_release_sim00_regbuild:
 rv64_ql_small_regbuild:
     domains: 1
     run_args: -p rv64_ql_regbuild -c cmd_files/bbl
-
 
 rv64_ql_regbuild:
     domains: 2

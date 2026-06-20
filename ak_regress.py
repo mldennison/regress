@@ -22,6 +22,13 @@ def _default_load_jobs(testlist_path: str):
 #######################################################
 
 class akJob(job):
+    home = "."
+    user_dir =  "."
+    programs = "."
+    run_dir =  "."
+    model_dir = "."
+    script_dir = "."
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -49,31 +56,48 @@ class akJob(job):
 
     def setup(self, _resources:list):
         ''' setup the job '''
-        logging.info(f"Setting up job: {self.setup_program} {self.setup_args} with resources: {_resources}")
+        cmd = [self.script_dir + "/" + self.setup_program] + [self.setup_args]
+        # add the date/time to the name
+        time_arg = ["-e", datetime.now().strftime("%Y%m%d%H%M%S")]
+        # model is nome of the job
+        model_arg = ["-m", self.name]
+        cmd += cmd + time_arg + model_arg
+        # since we have figured this out, just add to run as well
+        self.run_args += time_arg + model_arg
+        logging.info(f"Setting up job: {cmd} from dir {self.setup_dir}")
         if _regress_test_mode():
             time.sleep(2)
             self.status = job_status.COMPLETED
             self.result = job_result.SUCCESS
-            logging.info(f"{self.name} setup completed with result: {self.result}")
         else:
-            result = subprocess.run([self.setup_program] + self.setup_args, cwd=self.setup_dir, capture_output=True, text=True)
+            result = subprocess.run(cmd, cwd=self.setup_dir)
             self.status = job_status.COMPLETED
             self.result = job_result(result.returncode)
-            logging.info(f"{self.name} setup completed with result: {self.result}")
+        logging.info(f"{self.name} setup completed with result: {self.result}")
 
     def run(self, _resources:list):
         # call runEmu
-        logging.info(f"Running job: {self.run_program} {self.run_args} from dir {self.run_dir}")
+        cmd = [self.script_dir + "/" + self.run_program] + [self.run_args]
+        # some args need to be calculated
+        # model is nome of the job
+        cmd += ["-m", self.name]
+        # process resources
+        for resource in _resources:
+            if resource.name == "domains":
+                cmd += ["-b", resource.values[0]]
+            elif resource.name == "tpod":
+                # FIXME - JTAG/PCIE 
+                cmd += ["-l", resource.values[0]]
+        logging.info(f"Running job: {cmd} from dir {self.run_dir}")
         if _regress_test_mode():
             time.sleep(2)
             self.status = job_status.COMPLETED
             self.result = random.choice([job_result.SUCCESS, job_result.FAILED])
-            logging.info(f"{self.name} completed with result: {self.result}")
         else:
-            result = subprocess.run([self.run_program] + self.run_args, cwd=self.run_dir, capture_output=True, text=True)
+            result = subprocess.run(cmd, cwd=self.run_dir)
             self.status = job_status.COMPLETED
             self.result = job_result(result.returncode)
-            logging.info(f"{self.name} completed with result: {self.result}")
+        logging.info(f"{self.name} completed with result: {self.result}")
 
 
 #######################################################
@@ -105,19 +129,13 @@ class akRegress(regress):
         if self.args.usage is not None: licenseResource.max_pct = self.args.usage
         else:                           licenseResource.max_pct = 50
         if not _regress_test_mode():
-            self.home = "/home/" + os.environ.get('USER')
-            self.user_dir =  self.root_dir + "/USERS/"  + os.environ.get('USER')
-            self.programs = self.root_dir + "/PROGRAMS/"
-            self.run_dir =  self.user_dir + "/RUNS/regress"
-            self.model_dir = self.root_dir + "/MODELS/regress"
-            self.script_dir = self.root_dir + "/SCRIPTS"
+            akJob.home = "/home/" + os.environ.get('USER')
+            akJob.user_dir =  self.root_dir + "/USERS/"  + os.environ.get('USER')
+            akJob.programs = self.root_dir + "/PROGRAMS/"
+            akJob.run_dir =  self.user_dir + "/RUNS/regress"
+            akJob.model_dir = self.root_dir + "/MODELS/regress"
+            akJob.script_dir = self.root_dir + "/SCRIPTS"
         else:
-            self.home = "."
-            self.user_dir =  "."
-            self.programs = "."
-            self.run_dir =  "."
-            self.model_dir = "."
-            self.script_dir = "."
             # make the interval very short for testing
             self.interval = 1
 
@@ -149,11 +167,11 @@ class akRegress(regress):
             return test_list
         else:
             # find builds that are are available to run right now
+            jobs = []
             for job in test_list:
                 if job.status == job_status.NOT_STARTED:
                     jobs.append(job)
             return jobs
-        return test_list
 
 
 #######################################################

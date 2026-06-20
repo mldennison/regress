@@ -36,14 +36,17 @@ class job:
     def __init__(self) -> None:
         self.name = None
 
+        self.build_valid = False
         self.build_resources = []
         self.build_program = None
         self.build_args = []
         self.build_dir = None
+        self.setup_valid = False
         self.setup_resources = []
         self.setup_program = None
         self.setup_args = []
         self.setup_dir = None
+        self.run_valid = False
         self.run_resources = []
         self.run_program = None
         self.run_args = []
@@ -59,8 +62,29 @@ class job:
     def finished(self) -> bool:
         return True if (self.status == job_status.COMPLETED) else False
 
+    def _phase_valid(self, status: int) -> bool:
+        if status == job_status.NOT_STARTED:
+            return self.build_valid
+        if status == job_status.BUILD:
+            return self.build_valid
+        if status == job_status.SETUP:
+            return self.setup_valid
+        if status == job_status.RUNNING:
+            return self.run_valid
+        return True
+
+    def update_status(self, _advance:bool=False) -> None:
+        ''' update the status of the job based on the current status and the results of the previous phase '''
+        if self.status >= job_status.COMPLETED:
+            return
+        if _advance:
+            self.status = min(self.status + 1, job_status.COMPLETED)
+        while self.status < job_status.COMPLETED and not self._phase_valid(self.status):
+            self.status += 1
+
     def get_resources(self) -> list:
         ''' return resources that are required for the current phase of the job'''
+        self.update_status()
         if self.status == job_status.NOT_STARTED:
             return self.build_resources
         elif self.status == job_status.BUILD:
@@ -74,18 +98,20 @@ class job:
         ''' return resources that have been consumed by the job '''
         return self.consumed_resources
 
-
     def run_next(self, _resources:list) -> job_status:
+        stat = None
         self.consumed_resources.extend(_resources)
+        self.update_status()
         if self.status == job_status.NOT_STARTED:
-            return self.build(_resources)
+            stat = self.build(_resources)
         elif self.status == job_status.BUILD:
-            return self.setup(_resources)
+            stat = self.setup(_resources)
         elif self.status == job_status.SETUP:
-            return self.run(_resources)
-        else:
-            return None
-
+            stat = self.run(_resources)
+        # move to the next state
+        self.update_status(True)
+        return stat
+        
     def build(self, _resources:list) -> None:
         ''' Extend to build the job '''
         return NotImplementedError
