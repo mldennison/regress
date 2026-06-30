@@ -154,6 +154,11 @@ def load_jobs(path: str | Path) -> list:
 
             jobs.append(JobCls(**kwargs))
 
+    # for debug
+    # for  j in jobs:
+    #     print(repr(j))
+    #     print()
+
     return jobs
 
 

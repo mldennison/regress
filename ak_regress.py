@@ -25,9 +25,10 @@ class akJob(job):
     home = "."
     user_dir =  "."
     programs = "."
-    run_dir =  "."
+    default_run_dir = "."
     model_dir = "."
     script_dir = "."
+    time_arg = None
 
     def __init__(self) -> None:
         super().__init__()
@@ -37,68 +38,50 @@ class akJob(job):
         ''' create a job from a testlist job, this allows the yaml parser to generate job classes and 
             we can use this to upconvert to akjobs and add in specifics '''
         nph = cls()
+        phase_attrs = {
+            f"{phase}_{attr}"
+            for phase in job._PHASE_PREFIXES
+            for attr in ("valid", "resources", "program", "args", "dir", "time")
+        }
 
         for field in _testJob.__dict__:
+            if field in phase_attrs:
+                continue
             if hasattr(_testJob, field):
                 setattr(nph, field, getattr(_testJob, field))
+
+        for phase, index in (("build", 0), ("setup", 1), ("run", 2)):
+            job.apply_phase_fields(nph, _testJob, phase, index)
 
         # expand the number of domains out to a list of resources
         domains = getattr(_testJob, "domains", None)
         if domains is not None:
             dresource = domainResource("domains", [domains], ["REQUIRED"])
-            nph.run_resources.append(dresource)
+            nph.tasks[2].resources.append(dresource)
             license_resource = licenseResource("Palladium_Z2_Domain", [domains], ["REQUIRED"])
-            nph.run_resources.append(license_resource)
-        # skip build and setup steps
-        nph.status = job_status.SETUP
+            nph.tasks[2].resources.append(license_resource)
+        nph.update_status()
+
+        # for debug print(repr(nph))
 
         return nph
 
-    def setup(self, _resources:list):
-        ''' setup the job '''
-        cmd = [self.script_dir + "/" + self.setup_program] + [self.setup_args]
-        # add the date/time to the name
-        time_arg = ["-e", datetime.now().strftime("%Y%m%d%H%M%S")]
-        # model is nome of the job
+    def run(self, _resources:list, _task:task):
+        ''' run the given task '''
+        cmd = [self.script_dir + "/" + _task.program] + [_task.args]
+        if self.time_arg is None:
+            self.time_arg = ["-e", datetime.now().strftime("%Y%m%d%H%M%S")]
         model_arg = ["-m", self.name]
-        cmd += cmd + time_arg + model_arg
-        # since we have figured this out, just add to run as well
-        self.run_args += time_arg + model_arg
-        logging.info(f"Setting up job: {cmd} from dir {self.setup_dir}")
+        cmd += cmd + self.time_arg + model_arg
+        logging.info(f"Running {self.name} {_task.name} : {cmd} from dir {_task.dir}")
         if _regress_test_mode():
             time.sleep(2)
-            self.status = job_status.COMPLETED
             self.result = job_result.SUCCESS
         else:
-            result = subprocess.run(cmd, cwd=self.setup_dir)
-            self.status = job_status.COMPLETED
+            result = subprocess.run(cmd, cwd=_task.dir)
             self.result = job_result(result.returncode)
-        logging.info(f"{self.name} setup completed with result: {self.result}")
-
-    def run(self, _resources:list):
-        # call runEmu
-        cmd = [self.script_dir + "/" + self.run_program] + [self.run_args]
-        # some args need to be calculated
-        # model is nome of the job
-        cmd += ["-m", self.name]
-        # process resources
-        for resource in _resources:
-            if resource.name == "domains":
-                cmd += ["-b", resource.values[0]]
-            elif resource.name == "tpod":
-                # FIXME - JTAG/PCIE 
-                cmd += ["-l", resource.values[0]]
-        logging.info(f"Running job: {cmd} from dir {self.run_dir}")
-        if _regress_test_mode():
-            time.sleep(2)
-            self.status = job_status.COMPLETED
-            self.result = random.choice([job_result.SUCCESS, job_result.FAILED])
-        else:
-            result = subprocess.run(cmd, cwd=self.run_dir)
-            self.status = job_status.COMPLETED
-            self.result = job_result(result.returncode)
-        logging.info(f"{self.name} completed with result: {self.result}")
-
+        logging.info(f"{self.name} {_task.name} completed with result: {self.result}")
+        return
 
 #######################################################
 
@@ -132,7 +115,7 @@ class akRegress(regress):
             akJob.home = "/home/" + os.environ.get('USER')
             akJob.user_dir =  self.root_dir + "/USERS/"  + os.environ.get('USER')
             akJob.programs = self.root_dir + "/PROGRAMS/"
-            akJob.run_dir =  self.user_dir + "/RUNS/regress"
+            akJob.default_run_dir =  self.user_dir + "/RUNS/regress"
             akJob.model_dir = self.root_dir + "/MODELS/regress"
             akJob.script_dir = self.root_dir + "/SCRIPTS"
         else:

@@ -29,114 +29,104 @@ class job_result:
 
 #######################################################
 
+class task:
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.valid = False
+        self.resources = []
+        self.program = None
+        self.args = []
+        self.dir = None
+        self.time = None
+
+    def __repr__(self) -> str:
+        return f"task(name={self.name!r}, valid={self.valid!r}, resources={self.resources!r}, program={self.program!r}, args={self.args!r}, dir={self.dir!r}, time={self.time!r})"
+
 class job:
     ''' represents a job/test to be run.  there are up to three phases to a job: build, setup, and run.  
         Each phase has its own resources, program, and arguments.  If only one phase is needed, use the run arguments'''
 
+    _PHASE_PREFIXES = ("build", "setup", "run")
+
     def __init__(self) -> None:
         self.name = None
-
-        self.build_valid = False
-        self.build_resources = []
-        self.build_program = None
-        self.build_args = []
-        self.build_dir = None
-        self.setup_valid = False
-        self.setup_resources = []
-        self.setup_program = None
-        self.setup_args = []
-        self.setup_dir = None
-        self.run_valid = False
-        self.run_resources = []
-        self.run_program = None
-        self.run_args = []
-        self.run_dir = None     
+        self.tasks = [task("build"), task("setup"), task("run")]
         self.status = job_status.NOT_STARTED
         self.result = job_result.INCOMPLETE
-        self.build_time = None
-        self.setup_time = None
-        self.run_time = None
-
         self.consumed_resources = []
+
+    @staticmethod
+    def apply_phase_fields(job_instance, source, phase: str, index: int) -> None:
+        t = job_instance.tasks[index]
+        for attr in ("valid", "resources", "program", "args", "dir", "time"):
+            field = f"{phase}_{attr}"
+            if hasattr(source, field):
+                val = getattr(source, field)
+                if val is not None:
+                    setattr(t, attr, val)
+        if not t.valid and (t.program or t.args or t.dir):
+            t.valid = True
 
     def finished(self) -> bool:
         return True if (self.status == job_status.COMPLETED) else False
 
-    def _phase_valid(self, status: int) -> bool:
-        if status == job_status.NOT_STARTED:
-            return self.build_valid
-        if status == job_status.BUILD:
-            return self.build_valid
-        if status == job_status.SETUP:
-            return self.setup_valid
-        if status == job_status.RUNNING:
-            return self.run_valid
-        return True
-
     def update_status(self, _advance:bool=False) -> None:
         ''' update the status of the job based on the current status and the results of the previous phase '''
-        if self.status >= job_status.COMPLETED:
-            return
-        if _advance:
-            self.status = min(self.status + 1, job_status.COMPLETED)
-        while self.status < job_status.COMPLETED and not self._phase_valid(self.status):
+        # increment status first
+        if _advance and self.status < job_status.COMPLETED:
+            self.status = self.status + 1
+        # if the task we are current on is not valid, increment status until we find a valid task
+        while(True):
+            t = self._get_current_task()
+            if t is None: break
+            if t.valid: break
             self.status += 1
 
     def get_resources(self) -> list:
         ''' return resources that are required for the current phase of the job'''
         self.update_status()
-        if self.status == job_status.NOT_STARTED:
-            return self.build_resources
-        elif self.status == job_status.BUILD:
-            return self.setup_resources
-        elif self.status == job_status.SETUP:
-            return self.run_resources
-        else:
+        t = self._get_current_task()
+        if t is None: 
             return None
+        else:
+            return t.resources
 
     def get_consumed_resources(self) -> list:
         ''' return resources that have been consumed by the job '''
         return self.consumed_resources
 
+    def _get_current_task(self) -> task:
+        ''' return the task to execute for the current job status '''
+        if self.status == job_status.NOT_STARTED:
+            return self.tasks[0]
+        if self.status == job_status.BUILD:
+            return self.tasks[1]
+        if self.status == job_status.SETUP:
+            return self.tasks[2]
+        return None
+
     def run_next(self, _resources:list) -> job_status:
-        stat = None
         self.consumed_resources.extend(_resources)
         self.update_status()
-        if self.status == job_status.NOT_STARTED:
-            stat = self.build(_resources)
-        elif self.status == job_status.BUILD:
-            stat = self.setup(_resources)
-        elif self.status == job_status.SETUP:
-            stat = self.run(_resources)
-        # move to the next state
+        current_task = self._get_current_task()
+        stat = None
+        if current_task is not None:
+            logging.info(f"Running task: {current_task.__repr__()}")
+            stat = self.run(_resources, current_task)
+        # move to the next task
         self.update_status(True)
         return stat
-        
-    def build(self, _resources:list) -> None:
-        ''' Extend to build the job '''
-        return NotImplementedError
 
-    def setup(self, _resources:list) -> None:
-        ''' Extend to setup the job '''
-        return NotImplementedError
-
-    def run(self, _resources:list) -> None:
-        ''' Extend to run the job '''
+    def run(self, _resources:list, _task:task) -> None:
+        ''' Extend to run the given task '''
         return NotImplementedError
 
     def __repr__(self) -> str:
         ret = f"Job: {self.name:30}, Status: {self.status}, Result: {self.result}"
-        if self.status == job_status.NOT_STARTED:
-            ret = ret + f" build: {self.build_resources} {self.build_args}"
-        elif self.status == job_status.BUILD:
-            ret = ret + f" setup: {self.setup_resources} {self.setup_args}"
-        elif self.status == job_status.SETUP or self.status == job_status.RUNNING or self.status == job_status.COMPLETED:
-            ret = ret + f" run: {self.run_resources} {self.run_args}"
-        else:
-            return None
-        # FIXME - better, add in the full commands and results
+        for t in self.tasks:
+            ret = ret + f" {t.__repr__()}"
         return ret
-    
+            
 #######################################################
 
 class resource:
@@ -248,8 +238,8 @@ class available_resources:
         matched = False
 
         if job_resources is None or len(job_resources) == 0:
-            logging.error(f"No resources requested for job")
-            return None
+            logging.info(f"No resources requested for job")
+            return []
         for jresource in job_resources:
             matched = False
             for ourresource in self.resources:
