@@ -4,30 +4,6 @@ from regress import *
 from typing import Callable
 
 #######################################################
-
-def _regress_test_mode() -> bool:
-    import regress as regress_module
-    return bool(regress_module.test_mode)
-
-
-def _default_test_server_provider(factory: resourceFactory, _test_mode: bool, test_server_file: str) -> list[resource]:
-    if _test_mode:
-        from test_server import parse_emulator_status
-        with open(test_server_file, "r") as f:
-            return parse_emulator_status(factory, f.read())
-    from test_server import run_test_server
-    return run_test_server(factory)
-
-
-def _default_lmstat_provider(factory: resourceFactory, _test_mode: bool, license_file: str) -> list[resource]:
-    if _test_mode:
-        from lmstat import parse_lmstat
-        with open(license_file, "r") as f:
-            return parse_lmstat(factory, f.read())
-    from lmstat import run_lmstat
-    return run_lmstat(factory)
-
-#######################################################
 class domainResource(resource):
     ''' Resource for domains on a Palladium board '''
     domains_per_board = 8
@@ -245,4 +221,28 @@ class palAvailableResources(available_resources):
         logging.info(f"Updated resources:\n {self.__repr__()}")
     
         return 0
-        
+
+#######################################################
+# Test Mode
+
+def _regress_test_mode() -> bool:
+    import regress as regress_module
+    return bool(regress_module.test_mode)
+
+
+def _default_test_server_provider(factory: resourceFactory, _test_mode: bool, test_server_file: str) -> list[resource]:
+    if _test_mode:
+        from test_server import parse_emulator_status
+        with open(test_server_file, "r") as f:
+            return parse_emulator_status(factory, f.read())
+    from test_server import run_test_server
+    return run_test_server(factory)
+
+
+def _default_lmstat_provider(factory: resourceFactory, _test_mode: bool, license_file: str) -> list[resource]:
+    if _test_mode:
+        from lmstat import parse_lmstat
+        with open(license_file, "r") as f:
+            return parse_lmstat(factory, f.read())
+    from lmstat import run_lmstat
+    return run_lmstat(factory)

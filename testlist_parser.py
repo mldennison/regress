@@ -3,21 +3,23 @@
 regress_parser.py
 -----------------
 Reads a two-level YAML regression configuration file and produces a list of
-Job objects  one per domain (i.e. one per index position within each entry).
+Job objects — one per domain (i.e. one per index position within each entry).
 
 If an entry has n domains (determined by the length of its longest list
 attribute), n Jobs are created with names suffixed _1 .. _n.
 Single-domain entries produce one Job with no suffix.
 
 Attribute rules per Job:
-  - List-valued YAML attr   indexed to this domain's position (scalar)
-  - Scalar YAML attr         same value on every Job for this entry
-  - Absent attr              None
-  - Global attrs             plain scalar, same on every Job across all entries
+  - List-valued YAML attr   — indexed to this domain's position (scalar)
+  - Scalar YAML attr        — same value on every Job for this entry
+  - Absent attr             — None
+  - Global attrs            — applied to every Job; if the entry also defines
+    the same key, values are merged as "<global> <entry>" (global first)
 
 Special key "global":
   Top-level entry named "global" is not turned into a Job.  Its second-level
-  keys are added as plain scalar attributes on every Job.
+  keys are defaults on every Job.  When a test entry also sets a global key,
+  the entry-specific value is appended after the global value.
 
 The string literal "None" in YAML (e.g. sd: None) stays as Python None.
 """
@@ -31,7 +33,6 @@ from typing import Any, Optional
 
 GLOBAL_KEY = "global"
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -40,6 +41,15 @@ def _coerce_none(value: Any) -> Any:
     if isinstance(value, str) and value.strip() == "None":
         return None
     return value
+
+
+def _merge_values(global_val: Any, entry_val: Any) -> Any:
+    """Merge global and entry values: entry appends after global when both set."""
+    if entry_val is None:
+        return global_val
+    if global_val is None:
+        return entry_val
+    return f"{global_val} {entry_val}"
 
 
 def _all_keys(data: dict, global_attrs: dict) -> list[str]:
@@ -150,7 +160,14 @@ def load_jobs(path: str | Path) -> list:
                     kwargs[key] = _coerce_none(raw_val)
 
             for key in global_keys:
-                kwargs[key] = attrs.get(key, global_attrs[key])
+                raw_val = attrs.get(key)
+                if isinstance(raw_val, list):
+                    entry_val = _coerce_none(raw_val[i]) if i < len(raw_val) else None
+                elif key in attrs:
+                    entry_val = _coerce_none(raw_val)
+                else:
+                    entry_val = None
+                kwargs[key] = _merge_values(global_attrs[key], entry_val)
 
             jobs.append(JobCls(**kwargs))
 

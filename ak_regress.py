@@ -15,12 +15,6 @@ from pal_regress import palAvailableResources
 
 #######################################################
 
-def _default_load_jobs(testlist_path: str):
-    from testlist_parser import load_jobs
-    return load_jobs(testlist_path)
-
-#######################################################
-
 class akJob(job):
     home = "."
     user_dir =  "."
@@ -114,6 +108,7 @@ class akRegress(regress):
         if not _regress_test_mode():
             akJob.home = "/home/" + os.environ.get('USER')
             akJob.user_dir =  self.root_dir + "/USERS/"  + os.environ.get('USER')
+            self.user_dir = akJob.user_dir
             akJob.programs = self.root_dir + "/PROGRAMS/"
             akJob.default_run_dir =  self.user_dir + "/RUNS/regress"
             akJob.model_dir = self.root_dir + "/MODELS/regress"
@@ -152,10 +147,19 @@ class akRegress(regress):
             # find builds that are are available to run right now
             jobs = []
             for job in test_list:
-                if job.status == job_status.NOT_STARTED:
-                    jobs.append(job)
+                # check to see if there is a tarball for this build in the user's directory
+                tarball = self.user_dir + "/" + job.name + ".tar.gz"
+                if not os.path.exists(tarball):
+                    logging.info(f"Tarball {tarball} not found, skipping job {job.name}")
+                    continue
+                jobs.append(job)
             return jobs
 
+#######################################################
+
+def _default_load_jobs(testlist_path: str):
+    from testlist_parser import load_jobs
+    return load_jobs(testlist_path)
 
 #######################################################
 

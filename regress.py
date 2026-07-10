@@ -30,6 +30,7 @@ class job_result:
 #######################################################
 
 class task:
+    ''' represents a single phase of the job to be done (build, setup, run) '''
     def __init__(self, name: str) -> None:
         self.name = name
         self.valid = False
