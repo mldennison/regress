@@ -142,3 +142,73 @@ def test_main_mixed_domain_requests_above_and_below_board_size():
     job_by_name = {job.name: job for job in regress_runner.jobs}
     assert job_by_name["job_small"].status == job_status.COMPLETED
     assert job_by_name["job_large"].status == job_status.COMPLETED
+
+
+def test_filter_test_list_models_flag_keeps_matches_and_skips_setup(monkeypatch):
+    import regress as regress_module
+
+    monkeypatch.setattr(regress_module, "test_mode", 0)
+
+    jobs = [
+        SimpleNamespace(
+            name="alpine_regbuild",
+            domains=1,
+            build_program="build.py",
+            build_args=["--build"],
+            build_dir=".",
+            setup_program="setup.py",
+            setup_args=["--setup"],
+            setup_dir=".",
+            run_program="python",
+            run_args=["-c", "print('ok')"],
+            run_dir=".",
+        ),
+        SimpleNamespace(
+            name="rv64_qh_regbuild",
+            domains=1,
+            setup_program="setup.py",
+            setup_args=["--setup"],
+            setup_dir=".",
+            run_program="python",
+            run_args=["-c", "print('ok')"],
+            run_dir=".",
+        ),
+        SimpleNamespace(
+            name="voxel_release_sim00_regbuild_1",
+            domains=1,
+            setup_program="setup.py",
+            setup_args=["--setup"],
+            setup_dir=".",
+            run_program="python",
+            run_args=["-c", "print('ok')"],
+            run_dir=".",
+        ),
+    ]
+    regress_runner = akRegress(
+        _load_jobs_fn=lambda _path: jobs,
+        _test_server_provider=make_test_server_provider(domain_count=1),
+        _lmstat_provider=make_lmstat_provider(available_domains=1),
+    )
+    regress_runner.models = "alpine_regbuild_20240710120000,voxel_release_sim00_regbuild_1_20240710130000"
+    regress_runner.testlist = "unused.yaml"
+
+    loaded = regress_runner.load_test_list()
+    assert loaded[0].tasks[1].valid is True
+
+    filtered = regress_runner.filter_test_list(loaded)
+
+    assert [job.name for job in filtered] == [
+        "alpine_regbuild",
+        "voxel_release_sim00_regbuild_1",
+    ]
+    alpine = filtered[0]
+    assert alpine.time_arg == ["-e", "20240710120000"]
+    assert alpine.tasks[0].valid is False
+    assert alpine.tasks[1].valid is False
+    assert alpine.tasks[2].valid is True
+    assert alpine._get_current_task().name == "run"
+
+    voxel = filtered[1]
+    assert voxel.time_arg == ["-e", "20240710130000"]
+    assert voxel.tasks[1].valid is False
+    assert voxel._get_current_task().name == "run"

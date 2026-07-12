@@ -119,6 +119,7 @@ class akRegress(regress):
 
         if self.args.test_list is not None: self.testlist = self.args.test_list
         else:                               self.testlist = "test/regress.yaml"
+        self.models = self.args.models
 
     #-------------------------------------------------------
     def extended_args_parse(self, parser:argparse.ArgumentParser) -> None:
@@ -143,6 +144,29 @@ class akRegress(regress):
         if _regress_test_mode():
             # run everything in the test list
             return test_list
+        elif getattr(self, "models", None) is not None:
+            # -m provides <jobname>_<timearg> entries for models already set up
+            model_map = {}
+            for spec in split_to_list(self.models):
+                if "_" not in spec:
+                    logging.error(f"Invalid model spec '{spec}', expected <jobname>_<timearg>")
+                    continue
+                jobname, timearg = spec.rsplit("_", 1)
+                model_map[jobname] = timearg
+
+            jobs = []
+            for job in test_list:
+                if job.name not in model_map:
+                    logging.info(f"Job {job.name} not in -m models list, skipping")
+                    continue
+                # reuse the provided timestamp; skip build/setup and go straight to run
+                job.time_arg = ["-e", model_map[job.name]]
+                job.tasks[0].valid = False
+                job.tasks[1].valid = False
+                job.update_status()
+                jobs.append(job)
+            logging.info(f"Filtered to {len(jobs)} job(s) from -m models list")
+            return jobs
         else:
             # find builds that are are available to run right now
             jobs = []
