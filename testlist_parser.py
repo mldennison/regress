@@ -14,7 +14,8 @@ Attribute rules per Job:
   - Scalar YAML attr        — same value on every Job for this entry
   - Absent attr             — None
   - Global attrs            — applied to every Job; if the entry also defines
-    the same key, values are merged as "<global> <entry>" (global first)
+    the same key, values are merged (global first).  Keys ending in _args are
+    split into token lists and concatenated; other keys concatenate as strings.
 
 Special key "global":
   Top-level entry named "global" is not turned into a Job.  Its second-level
@@ -31,6 +32,8 @@ from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Any, Optional
 
+from regress_utils import split_to_list
+
 GLOBAL_KEY = "global"
 
 # ---------------------------------------------------------------------------
@@ -43,8 +46,23 @@ def _coerce_none(value: Any) -> Any:
     return value
 
 
-def _merge_values(global_val: Any, entry_val: Any) -> Any:
+def _is_args_key(key: str) -> bool:
+    return key.endswith("_args")
+
+
+def _to_arg_list(value: Any) -> list:
+    """Normalize an args value to a list of tokens."""
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return list(value)
+    return split_to_list(value)
+
+
+def _merge_values(global_val: Any, entry_val: Any, *, as_list: bool = False) -> Any:
     """Merge global and entry values: entry appends after global when both set."""
+    if as_list:
+        return _to_arg_list(global_val) + _to_arg_list(entry_val)
     if entry_val is None:
         return global_val
     if global_val is None:
@@ -155,9 +173,10 @@ def load_jobs(path: str | Path) -> list:
             for key in entry_keys:
                 raw_val = attrs.get(key)
                 if isinstance(raw_val, list):
-                    kwargs[key] = _coerce_none(raw_val[i]) if i < len(raw_val) else None
+                    val = _coerce_none(raw_val[i]) if i < len(raw_val) else None
                 else:
-                    kwargs[key] = _coerce_none(raw_val)
+                    val = _coerce_none(raw_val)
+                kwargs[key] = _to_arg_list(val) if _is_args_key(key) else val
 
             for key in global_keys:
                 raw_val = attrs.get(key)
@@ -167,7 +186,9 @@ def load_jobs(path: str | Path) -> list:
                     entry_val = _coerce_none(raw_val)
                 else:
                     entry_val = None
-                kwargs[key] = _merge_values(global_attrs[key], entry_val)
+                kwargs[key] = _merge_values(
+                    global_attrs[key], entry_val, as_list=_is_args_key(key)
+                )
 
             jobs.append(JobCls(**kwargs))
 

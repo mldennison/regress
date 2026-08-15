@@ -62,11 +62,11 @@ class akJob(job):
 
     def run(self, _resources:list, _task:task):
         ''' run the given task '''
-        cmd = [self.script_dir + "/" + _task.program] + [_task.args]
+        cmd = [self.script_dir + "/" + _task.program] + list(_task.args)
         if self.time_arg is None:
             self.time_arg = ["-e", datetime.now().strftime("%Y%m%d%H%M%S")]
         model_arg = ["-m", self.name]
-        cmd += cmd + self.time_arg + model_arg
+        cmd = cmd + self.time_arg + model_arg
         logging.info(f"Running {self.name} {_task.name} : {cmd} from dir {_task.dir}")
         if _regress_test_mode():
             time.sleep(2)
