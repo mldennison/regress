@@ -11,6 +11,7 @@ global:
     setup_program: runEmu.py
     setup_dir: "."
     setup_args: EXTRACT -r
+    Xcelium_Single_Core: 1
 
 alpine_regbuild:
     domains: 32

@@ -151,7 +151,7 @@ class licenseResource(resource):
             logging.info(f"Requested {requested} licenses, but only {available_licenses} available")
             return None
         else:
-            return resource("Palladium_Z2_Domain", [requested], ["USED"], True)
+            return resource(self.name, [requested], ["USED"], True)
 
     def consume(self, _values:list) -> bool:
         requested = _values[0]    

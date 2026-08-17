@@ -5,6 +5,7 @@ import random
 import subprocess
 import sys
 import time
+from datetime import datetime
 from typing import Callable
 
 from regress import *
@@ -54,15 +55,36 @@ class akJob(job):
             nph.tasks[2].resources.append(dresource)
             license_resource = licenseResource("Palladium_Z2_Domain", [domains], ["REQUIRED"])
             nph.tasks[2].resources.append(license_resource)
+        xcelium = getattr(_testJob, "Xcelium_Single_Core", None)
+        if xcelium is not None:
+            nph.tasks[2].resources.append(
+                licenseResource("Xcelium_Single_Core", [xcelium], ["REQUIRED"])
+            )
         nph.update_status()
 
         # for debug print(repr(nph))
 
         return nph
 
+    # we dont store the entire program path in the yaml, add it here
+    _PROGRAM_PATH_OPTS = ("-p", "-c", "--extdata", "--sram", "--iob", "--flash")
+
+    def _resolve_program_paths(self, args: list) -> list:
+        ''' Prepend akJob.programs to values of path options from the yaml. '''
+        resolved = []
+        expect_path = False
+        for arg in args:
+            if expect_path:
+                resolved.append(os.path.join(self.programs, arg))
+                expect_path = False
+            else:
+                resolved.append(arg)
+                expect_path = arg in self._PROGRAM_PATH_OPTS
+        return resolved
+
     def run(self, _resources:list, _task:task):
         ''' run the given task '''
-        cmd = [self.script_dir + "/" + _task.program] + list(_task.args)
+        cmd = [self.script_dir + "/" + _task.program] + self._resolve_program_paths(list(_task.args))
         if self.time_arg is None:
             self.time_arg = ["-e", datetime.now().strftime("%Y%m%d%H%M%S")]
         model_arg = ["-m", self.name]
@@ -120,6 +142,9 @@ class akRegress(regress):
         if self.args.test_list is not None: self.testlist = self.args.test_list
         else:                               self.testlist = "test/regress.yaml"
         self.models = self.args.models
+
+        # one timestamp for the whole regression so every job shares the same -e date
+        akJob.time_arg = ["-e", datetime.now().strftime("%Y%m%d%H%M%S")]
 
     #-------------------------------------------------------
     def extended_args_parse(self, parser:argparse.ArgumentParser) -> None:

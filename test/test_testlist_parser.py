@@ -15,6 +15,7 @@ def test_load_jobs_merges_global_and_entry_run_args():
     ]
     assert alpine.run_program == "runEmu.py"
     assert alpine.setup_args == ["EXTRACT", "-r"]
+    assert alpine.Xcelium_Single_Core == 1
 
     voxel1 = by_name["voxel_release_sim00_regbuild_1"]
     voxel2 = by_name["voxel_release_sim00_regbuild_2"]
