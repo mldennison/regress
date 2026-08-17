@@ -149,7 +149,7 @@ class akRegress(regress):
     #-------------------------------------------------------
     def extended_args_parse(self, parser:argparse.ArgumentParser) -> None:
         ''' Implement to add new arguments '''
-        parser.add_argument("-u", "--usage", default=100, type=int, help='List of models to run, these should all be in the RUNS/regress area')
+        parser.add_argument("-u", "--usage", default=100, type=int, help='License/domain usage percentage (0-100), default is 100')
         parser.add_argument("-m", "--models", help='List of models to run, these should all be in the RUNS/regress area')
         parser.add_argument("-t", "--test_list", help='Point to a different test list')
 

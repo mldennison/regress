@@ -7,6 +7,7 @@ import re
 import sys
 import os
 import logging
+import multiprocessing
 from datetime import datetime
 import time
 
@@ -116,6 +117,8 @@ class job:
             stat = self.run(_resources, current_task)
         # move to the next task
         self.update_status(True)
+        if self._get_current_task() is None and self.status != job_status.COMPLETED:
+            self.status = job_status.COMPLETED
         return stat
 
     def run(self, _resources:list, _task:task) -> None:
@@ -179,7 +182,70 @@ class resourceFactory:
 
 class scheduler:
     def __init__(self) -> None:
-        pass
+        self._inflight = {}
+
+    @classmethod
+    def _parent_log_config(cls) -> tuple:
+        ''' Return the parent's log file and level so workers can log to the same place. '''
+        root = logging.getLogger()
+        for handler in root.handlers:
+            if isinstance(handler, logging.FileHandler):
+                level = handler.level if handler.level != logging.NOTSET else root.level
+                return handler.baseFilename, level or logging.DEBUG
+        return os.path.abspath("test/regress.log"), logging.DEBUG
+
+    @classmethod
+    def _configure_child_logging(cls, log_file, log_level) -> None:
+        ''' Give the child its own FileHandler for the parent's log file. '''
+        if not log_file:
+            return
+        logging.basicConfig(filename=log_file, level=log_level, force=True)
+
+    @classmethod
+    def _run_job_worker(cls, job, resources, result_queue, log_file=None, log_level=logging.DEBUG):
+        ''' Child process entry: run one job phase and send status back to the parent. '''
+        cls._configure_child_logging(log_file, log_level)
+        try:
+            job.run_next(resources)
+            result_queue.put((
+                job.status,
+                job.result,
+                job.consumed_resources,
+                getattr(job, "executions", None),
+            ))
+        except Exception:
+            logging.exception("Job worker failed")
+            result_queue.put((
+                getattr(job, "status", job_status.RUNNING),
+                job_result.FAILED,
+                getattr(job, "consumed_resources", []),
+                getattr(job, "executions", None),
+            ))
+        finally:
+            for handler in logging.getLogger().handlers:
+                handler.flush()
+                handler.close()
+
+    def _harvest(self) -> None:
+        ''' Apply results from any worker processes that have exited. '''
+        for key, (job, proc, q) in list(self._inflight.items()):
+            if proc.is_alive():
+                continue
+            try:
+                status, result, consumed, extra = q.get(timeout=5)
+            except Exception:
+                logging.error(f"Failed to read result for job {job.name}")
+                status = job.status
+                result = job_result.FAILED
+                consumed = job.consumed_resources
+                extra = None
+            proc.join()
+            job.status = status
+            job.result = result
+            job.consumed_resources = consumed
+            if extra is not None:
+                job.executions = extra
+            del self._inflight[key]
 
     def schedule_jobs(self, jobs, status):
         ''' Given a list of jobs and the status of resources, schedule any jobs available right now, 
@@ -189,6 +255,8 @@ class scheduler:
         complete = []
 
         logging.info(f"Scheduling {len(jobs)} jobs")
+        self._harvest()
+        log_file, log_level = self._parent_log_config()
 
         # iterate over jobs
         for job_to_schedule in jobs:
@@ -196,6 +264,10 @@ class scheduler:
                 # dont free, assume we will get another updaate
                 #status.free(job_to_schedule.get_consumed_resources())
                 complete.append(job_to_schedule)
+                continue
+
+            if id(job_to_schedule) in self._inflight:
+                scheduled.append(job_to_schedule)
                 continue
 
             # check resources, see if we can find some that match and return them if we can
@@ -208,9 +280,15 @@ class scheduler:
                 for resource in resources: printstr += f"  {resource.__repr__()}"
                 logging.info(printstr)
 
-            # start the run and consume the resources in our status
+            # consume resources in the parent, then run the phase in a child process
             status.consume(resources)
-            job_to_schedule.run_next(resources)
+            result_queue = multiprocessing.Queue()
+            proc = multiprocessing.Process(
+                target=type(self)._run_job_worker,
+                args=(job_to_schedule, resources, result_queue, log_file, log_level),
+            )
+            proc.start()
+            self._inflight[id(job_to_schedule)] = (job_to_schedule, proc, result_queue)
             scheduled.append(job_to_schedule)
 
         logging.info(f"Scheduled {len(scheduled)} jobs, skipped {len(skipped)} jobs, completed {len(complete)} jobs")
