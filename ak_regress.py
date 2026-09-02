@@ -88,7 +88,12 @@ class akJob(job):
         if self.time_arg is None:
             self.time_arg = ["-e", datetime.now().strftime("%Y%m%d%H%M%S")]
         model_arg = ["-m", self.name]
-        cmd = cmd + self.time_arg + model_arg
+        board_arg = []
+        for res in _resources:
+            if getattr(res, "name", None) == "domains" and res.values:
+                board_arg = ["-b", "+".join(str(v) for v in res.values)]
+                break
+        cmd = cmd + self.time_arg + model_arg + board_arg
         logging.info(f"Running {self.name} {_task.name} : {cmd} from dir {_task.dir}")
         if _regress_test_mode():
             time.sleep(2)

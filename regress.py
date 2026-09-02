@@ -216,7 +216,7 @@ class scheduler:
         except Exception:
             logging.exception("Job worker failed")
             result_queue.put((
-                getattr(job, "status", job_status.RUNNING),
+                job_status.COMPLETED,
                 job_result.FAILED,
                 getattr(job, "consumed_resources", []),
                 getattr(job, "executions", None),
@@ -234,8 +234,8 @@ class scheduler:
             try:
                 status, result, consumed, extra = q.get(timeout=5)
             except Exception:
-                logging.error(f"Failed to read result for job {job.name}")
-                status = job.status
+                logging.exception(f"Failed to read result for job {job.name}")
+                status = job_status.COMPLETED
                 result = job_result.FAILED
                 consumed = job.consumed_resources
                 extra = None
