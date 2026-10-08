@@ -1,17 +1,7 @@
 from types import SimpleNamespace
 
 from ak_regress import akJob, akRegress
-from pal_regress import domainResource, licenseResource
 from regress import job, job_result, job_status, task
-
-
-def append_phase_resources(job_instance, domains: int, task_index: int) -> None:
-    job_instance.tasks[task_index].resources.append(
-        domainResource("domains", [domains], ["REQUIRED"])
-    )
-    job_instance.tasks[task_index].resources.append(
-        licenseResource("Palladium_Z2_Domain", [domains], ["REQUIRED"])
-    )
 
 
 class RecordingAkJob(akJob):
@@ -37,11 +27,7 @@ class RecordingAkJob(akJob):
         for phase, index in (("build", 0), ("setup", 1), ("run", 2)):
             job.apply_phase_fields(nph, _testJob, phase, index)
 
-        domains = getattr(_testJob, "domains", None)
-        if domains is not None:
-            for index in range(3):
-                append_phase_resources(nph, domains, index)
-
+        nph.attach_testlist_resources(_testJob, task_indexes=(0, 1, 2))
         nph.update_status()
         return nph
 

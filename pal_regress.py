@@ -171,6 +171,27 @@ class licenseResource(resource):
 
 #######################################################
 
+class palJob(job):
+    ''' A job that requests Palladium domains and licenses. '''
+
+    domain_license = "Palladium_Z2_Domain"
+    license_attrs = ("Xcelium_Single_Core",)
+
+    def attach_testlist_resources(self, source, task_indexes=(2,)) -> None:
+        ''' Turn Palladium domain and license counts on a testlist job into resources. '''
+        domains = getattr(source, "domains", None)
+        for index in task_indexes:
+            resources = self.tasks[index].resources
+            if domains is not None:
+                resources.append(domainResource("domains", [domains], ["REQUIRED"]))
+                resources.append(licenseResource(self.domain_license, [domains], ["REQUIRED"]))
+            for attr in self.license_attrs:
+                count = getattr(source, attr, None)
+                if count is not None:
+                    resources.append(licenseResource(attr, [count], ["REQUIRED"]))
+
+#######################################################
+
 class palResourceFactory(resourceFactory):
     ''' Return one of the specialized resource classes above based on the name '''
     def create_resource(self, _name:str, _values:list, _status:list=None, _match_name=None) -> resource:

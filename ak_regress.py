@@ -10,13 +10,13 @@ from typing import Callable
 
 from regress import *
 from pal_regress import _regress_test_mode
-from pal_regress import domainResource
 from pal_regress import licenseResource
 from pal_regress import palAvailableResources
+from pal_regress import palJob
 
 #######################################################
 
-class akJob(job):
+class akJob(palJob):
     home = "."
     user_dir =  "."
     programs = "."
@@ -48,18 +48,7 @@ class akJob(job):
         for phase, index in (("build", 0), ("setup", 1), ("run", 2)):
             job.apply_phase_fields(nph, _testJob, phase, index)
 
-        # expand the number of domains out to a list of resources
-        domains = getattr(_testJob, "domains", None)
-        if domains is not None:
-            dresource = domainResource("domains", [domains], ["REQUIRED"])
-            nph.tasks[2].resources.append(dresource)
-            license_resource = licenseResource("Palladium_Z2_Domain", [domains], ["REQUIRED"])
-            nph.tasks[2].resources.append(license_resource)
-        xcelium = getattr(_testJob, "Xcelium_Single_Core", None)
-        if xcelium is not None:
-            nph.tasks[2].resources.append(
-                licenseResource("Xcelium_Single_Core", [xcelium], ["REQUIRED"])
-            )
+        nph.attach_testlist_resources(_testJob)
         nph.update_status()
 
         # for debug print(repr(nph))
