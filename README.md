@@ -12,19 +12,18 @@ The application is three layers. Each layer extends the one below it.
 
 ### Equipment layer
 
-This layer adds the hardware or software being scheduled. [`pal_regress.py`](pal_regress.py) is the Cadence Palladium example. It turns Palladium domains and licenses into resources the base scheduler can allocate, including the rules for which domains can be given to a job.
+This layer adds the hardware or software being scheduled. [`pal_regress.py`](pal_regress.py) is an example for the Cadence Palladium hardware. It implements board domains and the associated licenses into resources the base scheduler can allocate, including the rules for which domains can be given to a job.
 
 ### Application layer
 
-This layer adds one user's regression environment. [`ak_regress.py`](ak_regress.py) is the example. It reads the config in [`test/regress.yaml`](test/regress.yaml), turns each entry into a job, and fills in the command options used to run that job (program paths, model name, timestamp, and the boards that were allocated).
+This layer adds your applications regression environment. [`app_regress.py`](app_regress.py) is an example. `appJob` extends `palJob`. `create_from_testlistjob` copies a test-list entry onto a job, fills in the build, setup, and run phases, and attaches the Palladium resources that entry asks for. `run` prints the job and task name; a real application replaces that with the command to run. `appRegress` loads [`test/regress.yaml`](test/regress.yaml) through `load_jobs` and turns each entry into an `appJob`. `setup`, `extended_args_parse`, and `filter_test_list` are the places to add paths, arguments, and which jobs should run.
 
-## Locally tested
+[`ak_regress.py`](ak_regress.py) is one company's regression. It fills in program paths, the model name, a timestamp, and the boards that were allocated, and it can keep only the models that are ready to run.
 
-Local checks cover the path from the example config through scheduling, without calling live Palladium hardware or license servers.
+## Resources
 
-- Config parsing merges global defaults with each entry in `test/regress.yaml`, including entries that expand into more than one job.
-- The scheduler runs build, then setup, then run, and finishes the job.
-- Jobs start together when enough domains and licenses are free, and they wait and run later when those resources are tight.
-- Requests smaller than a board and requests that span more than one board both complete when the domains exist.
-- A worker that dies during a phase is marked failed and is not started again.
-- The models filter keeps the named jobs, reuses the given timestamp, and skips build and setup so only run is scheduled.
+A resource is a named pool the scheduler can give to a job. It has a list of values and a status for each value, such as `FREE` or `USED`. A job phase lists what it needs: the resource name, the count or identifier in `values`, and status `REQUIRED`.
+
+When a phase is ready, the scheduler matches each requested name to a live resource and calls `allocate`. If every request can be filled, those values are consumed until the phase finishes, then freed. If any request cannot be filled, the job waits.
+
+The base `resource` class records values and status. Equipment classes decide how to allocate based on their setup, the Palladium example of the Equipment later implements board domans where each job requires a number of domains.  These can only be allocated based on rules setup at the equipment later.
